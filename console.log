@@ -1,0 +1,17 @@
+async function loadKategori() {
+  const { data, error } = await supabase
+    .from("categories")
+    .select("*")
+    .eq("type", type)
+    .order("name");
+
+  console.log("DATA KATEGORI:", data);
+  console.log("ERROR:", error);
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  setCategories(data || []);
+}
