@@ -22,7 +22,7 @@ export default function DashboardPage() {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        window.location.href = "/login";
+        window.location.href = "/data-keuangan/login";
         return;
       }
 
@@ -67,7 +67,7 @@ export default function DashboardPage() {
 
   async function handleLogout() {
     await supabase.auth.signOut();
-    window.location.href = "/login";
+    window.location.href = "/data-keuangan/login";
   }
 
   return (
