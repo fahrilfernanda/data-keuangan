@@ -244,7 +244,7 @@ export default function RegisterPage() {
 
             {/* Tombol Kembali */}
             <Link
-              href="/data-keuangan/login"
+              href="/login"
               className="block w-full text-center py-3 rounded-xl border border-white/20 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white transition-all"
             >
               ← Kembali ke Login
