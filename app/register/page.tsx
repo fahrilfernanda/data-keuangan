@@ -3,8 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { User } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
+  const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] =
     useState("");
@@ -13,8 +17,10 @@ export default function RegisterPage() {
 
   const [error, setError] =
     useState("");
+
   const [loading, setLoading] =
     useState(false);
+
   const [success, setSuccess] =
     useState(false);
 
@@ -23,7 +29,80 @@ export default function RegisterPage() {
   ) => {
     e.preventDefault();
 
-    // Kode register kamu di sini
+    try {
+      setLoading(true);
+      setError("");
+      setSuccess(false);
+
+      if (
+        !email ||
+        !password ||
+        !confirmPassword
+      ) {
+        setError(
+          "Semua field wajib diisi"
+        );
+        return;
+      }
+
+      if (password.length < 6) {
+        setError(
+          "Password minimal 6 karakter"
+        );
+        return;
+      }
+
+      if (
+        password !== confirmPassword
+      ) {
+        setError(
+          "Konfirmasi password tidak cocok"
+        );
+        return;
+      }
+
+      const {
+        data,
+        error,
+      } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) {
+        setError(error.message);
+        return;
+      }
+
+      console.log(
+        "Registrasi berhasil:",
+        data
+      );
+
+      setSuccess(true);
+
+      setEmail("");
+      setPassword("");
+      setConfirmPassword("");
+
+      // otomatis kembali ke login
+      setTimeout(() => {
+        router.push(
+          "/data-keuangan/login"
+        );
+      }, 2000);
+    } catch (err) {
+      console.error(
+        "Register Error:",
+        err
+      );
+
+      setError(
+        "Terjadi kesalahan saat registrasi"
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -68,9 +147,14 @@ export default function RegisterPage() {
               <p className="text-green-200 font-medium">
                 ✅ Registrasi berhasil!
               </p>
+
               <p className="text-sm text-green-300">
                 Silakan cek email untuk
                 verifikasi akun.
+              </p>
+
+              <p className="text-xs text-green-300 mt-1">
+                Mengalihkan ke halaman login...
               </p>
             </div>
           )}
@@ -103,6 +187,7 @@ export default function RegisterPage() {
                 onChange={(e) =>
                   setEmail(e.target.value)
                 }
+                required
               />
             </div>
 
@@ -122,6 +207,7 @@ export default function RegisterPage() {
                     e.target.value
                   )
                 }
+                required
               />
             </div>
 
@@ -141,6 +227,7 @@ export default function RegisterPage() {
                     e.target.value
                   )
                 }
+                required
               />
             </div>
 
@@ -157,11 +244,12 @@ export default function RegisterPage() {
 
             {/* Tombol Kembali */}
             <Link
-              href="/login"
+              href="/data-keuangan/login"
               className="block w-full text-center py-3 rounded-xl border border-white/20 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white transition-all"
             >
               ← Kembali ke Login
             </Link>
+
           </form>
         </div>
 
