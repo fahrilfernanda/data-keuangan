@@ -31,7 +31,7 @@ export default function TambahTransaksi() {
   async function loadKategori() {
     try {
       const { data, error } = await supabase
-        .from("category_id")
+        .from("categories")
         .select("*")
         .order("type")
         .order("name");
