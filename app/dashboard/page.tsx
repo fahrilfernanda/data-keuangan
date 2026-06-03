@@ -89,7 +89,7 @@ export default function DashboardPage() {
       return;
     }
 
-    window.location.replace("/login");
+    window.location.replace("/data-keuangan/login");
   } catch (err) {
     console.error("Logout error:", err);
   }
