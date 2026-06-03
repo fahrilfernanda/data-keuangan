@@ -13,11 +13,13 @@ import {
 } from "lucide-react";
 
 export default function LoginPage() {
+  console.log("LOGIN PAGE TERLOAD");
   const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] =
     useState("");
+
   const [showPassword, setShowPassword] =
     useState(false);
 
@@ -35,18 +37,38 @@ export default function LoginPage() {
   }, []);
 
   async function cekUser() {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+  try {
+    console.log("Mulai cek session");
+
+    const result = await Promise.race([
+      supabase.auth.getSession(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject("TIMEOUT"), 5000)
+      ),
+    ]);
+
+    console.log("HASIL:", result);
+
+    const session =
+      (result as any)?.data?.session;
 
     if (session) {
+      console.log("User sudah login");
+
       router.replace("/dashboard");
       return;
     }
+  } catch (err) {
+    console.error(
+      "Gagal mengecek session:",
+      err
+    );
+  } finally {
+    console.log("Loading selesai");
 
     setCheckingSession(false);
   }
-
+}
   async function handleLogin(
     e: React.FormEvent
   ) {
@@ -70,7 +92,9 @@ export default function LoginPage() {
       }
 
       router.replace("/dashboard");
-    } catch {
+    } catch (err) {
+      console.error(err);
+
       setError(
         "Terjadi kesalahan saat login"
       );
@@ -82,15 +106,14 @@ export default function LoginPage() {
   if (checkingSession) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950">
-         
-         {/* Background Effect */}
-    <div className="absolute inset-0 overflow-hidden">
-      <div className="absolute top-20 left-20 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
+        {/* Background Effect */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-20 left-20 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
 
-      <div className="absolute bottom-20 right-20 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-20 right-20 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl"></div>
 
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-cyan-500/5 rounded-full blur-3xl"></div>
-    </div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-cyan-500/5 rounded-full blur-3xl"></div>
+        </div>
 
         <div className="text-white text-xl">
           Memuat...
@@ -219,9 +242,6 @@ export default function LoginPage() {
             >
               Daftar di sini
             </Link>
-          </div>
-
-          <div className="text-center">
           </div>
         </form>
       </div>

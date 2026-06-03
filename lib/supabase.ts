@@ -1,21 +1,31 @@
 import { createClient } from "@supabase/supabase-js";
 
-export let supabase: any;
+const supabaseUrl =
+  process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-export function getSupabase() {
-  if (typeof window === "undefined") return null;
+const supabaseAnonKey =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!supabase) {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (!url || !key) {
-      console.warn("Missing Supabase env");
-      return null;
-    }
-
-    supabase = createClient(url, key);
-  }
-
-  return supabase;
+if (!supabaseUrl) {
+  throw new Error(
+    "NEXT_PUBLIC_SUPABASE_URL tidak ditemukan di .env.local"
+  );
 }
+
+if (!supabaseAnonKey) {
+  throw new Error(
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY tidak ditemukan di .env.local"
+  );
+}
+
+export const supabase = createClient(
+  supabaseUrl,
+  supabaseAnonKey,
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  }
+);

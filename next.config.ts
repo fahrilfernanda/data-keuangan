@@ -1,13 +1,17 @@
 import type { NextConfig } from "next";
 
+const isProd = process.env.NODE_ENV === "production";
+
 const nextConfig: NextConfig = {
-  output: "export",
+  allowedDevOrigins: [
+    "192.168.59.1",
+      ],
+  output: isProd ? "export" : undefined,
 
-  // GitHub Pages project repo
-  basePath: "/data-keuangan",
-  assetPrefix: "/data-keuangan/",
+  basePath: isProd ? "/data-keuangan" : "",
 
-  // penting untuk static export biar tidak error saat build
+  assetPrefix: isProd ? "/data-keuangan/" : "",
+
   trailingSlash: true,
 
   images: {
