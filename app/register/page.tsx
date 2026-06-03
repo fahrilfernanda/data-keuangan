@@ -88,7 +88,7 @@ export default function RegisterPage() {
       // otomatis kembali ke login
       setTimeout(() => {
         router.push(
-          "/data-keuangan/login"
+          "/login"
         );
       }, 2000);
     } catch (err) {
