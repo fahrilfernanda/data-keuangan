@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -31,7 +31,7 @@ export default function TambahTransaksi() {
   async function loadKategori() {
     try {
       const { data, error } = await supabase
-        .from("categories")
+        .from("category_id")
         .select("*")
         .order("type")
         .order("name");
@@ -59,7 +59,10 @@ export default function TambahTransaksi() {
       return;
     }
 
-    if (!amount || Number(amount) <= 0) {
+    if (
+    !amount ||
+      Number(amount.replace(/\./g, "")) <= 0
+      ) {
       setError(
         "Jumlah harus lebih dari 0"
       );
@@ -87,7 +90,9 @@ export default function TambahTransaksi() {
       await supabase.from("transactions").insert({
         user_id: user.id,
         title,
-        amount: Number(amount),
+        amount: Number(
+          amount.replace(/\./g, "")
+          ),
         category_id: Number(categoryId),
         transaction_date: new Date()
           .toISOString()
@@ -121,6 +126,36 @@ export default function TambahTransaksi() {
   const expenseCategories = categories.filter(
     (cat) => cat.type === "expense"
   );
+
+  function formatRupiah(value: string) {
+  const number = value.replace(/\D/g, "");
+
+  return number.replace(
+    /\B(?=(\d{3})+(?!\d))/g,
+    "."
+  );
+}
+
+function handleAmountChange(
+  e: React.ChangeEvent<HTMLInputElement>
+) {
+  setAmount(
+    formatRupiah(e.target.value)
+  );
+}
+
+function tambahNominal(
+  nominal: number
+) {
+  const current =
+    Number(amount.replace(/\./g, "")) || 0;
+
+  const total = current + nominal;
+
+  setAmount(
+    formatRupiah(total.toString())
+  );
+}
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -200,26 +235,51 @@ export default function TambahTransaksi() {
             </div>
 
             {/* Amount Input */}
-            <div>
-              <label className="block text-sm font-semibold text-slate-200 mb-3">
-                Jumlah (Rp)
-              </label>
-              <div className="relative">
-                <span className="absolute left-4 top-3.5 text-slate-400 font-semibold">
-                  Rp
-                </span>
-                <input
-                  type="number"
-                  placeholder="0"
-                  className="w-full pl-12 pr-4 py-3 rounded-lg bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-30 outline-none transition-all duration-200"
-                  value={amount}
-                  onChange={(e) =>
-                    setAmount(e.target.value)
-                  }
-                  disabled={loading || success}
-                />
-              </div>
-            </div>
+<div>
+  <label className="block text-sm font-semibold text-slate-200 mb-3">
+    Jumlah (Rp)
+  </label>
+
+  <div className="relative">
+    <span className="absolute left-4 top-3.5 text-slate-400 font-semibold">
+      Rp
+    </span>
+
+    <input
+      type="text"
+      inputMode="numeric"
+      placeholder="0"
+      className="w-full pl-12 pr-4 py-3 rounded-lg bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-30 outline-none transition-all duration-200"
+      value={amount}
+      onChange={handleAmountChange}
+      disabled={loading || success}
+    />
+  </div>
+
+  <div className="flex gap-2 mt-3">
+    <button
+      type="button"
+      onClick={() =>
+        tambahNominal(50000)
+      }
+      disabled={loading || success}
+      className="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium transition-all duration-200"
+    >
+      +50.000
+    </button>
+
+    <button
+      type="button"
+      onClick={() =>
+        tambahNominal(100000)
+      }
+      disabled={loading || success}
+      className="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium transition-all duration-200"
+    >
+      +100.000
+    </button>
+  </div>
+</div>
 
             {/* Category Select */}
             <div>
