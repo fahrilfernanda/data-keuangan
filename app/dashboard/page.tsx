@@ -375,7 +375,7 @@ export default function DashboardPage() {
         {/* Action Links Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8 animate-fade-in" style={{ animationDelay: "300ms" }}>
           <Link
-            href="/akun"
+            href="/akun/edit"
             className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-800 to-slate-800/50 hover:from-slate-700 hover:to-slate-700/50 border border-slate-700 hover:border-slate-600 p-6 transition-all duration-500 transform hover:scale-105"
           >
             <div className="relative z-10">
