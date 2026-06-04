@@ -4,9 +4,36 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
+
+import { Line } from "react-chartjs-2";
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
+
 export default function LaporanPage() {
   const [income, setIncome] = useState(0);
   const [expense, setExpense] = useState(0);
+  const [monthlyIncome, setMonthlyIncome] =
+  useState<number[]>(Array(12).fill(0));
+  const [monthlyExpense, setMonthlyExpense] =
+  useState<number[]>(Array(12).fill(0));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,12 +48,11 @@ export default function LaporanPage() {
 
       const { data } = await supabase
         .from("transactions")
-        .select(
-          `
-          amount,
-          categories(type)
-        `
-        )
+        .select(`
+        amount,
+        transaction_date,
+        categories(type)
+        `)
         .eq("user_id", user?.id);
 
       let pemasukan = 0;
@@ -42,6 +68,33 @@ export default function LaporanPage() {
         }
       });
 
+      const incomeByMonth =
+        Array(12).fill(0);
+
+      const expenseByMonth =
+        Array(12).fill(0);
+
+      data?.forEach((item: any) => {
+        const month = new Date(
+          item.transaction_date
+        ).getMonth();
+
+        if (
+          item.categories?.type === "income"
+        ) {
+          incomeByMonth[month] += Number(
+            item.amount
+          );
+        } else {
+          expenseByMonth[month] += Number(
+            item.amount
+          );
+        }
+      });
+
+      setMonthlyIncome(incomeByMonth);
+      setMonthlyExpense(expenseByMonth);
+
       setIncome(pemasukan);
       setExpense(pengeluaran);
     } catch (err) {
@@ -50,6 +103,71 @@ export default function LaporanPage() {
       setLoading(false);
     }
   }
+
+    const chartData = {
+    labels: [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "Mei",
+      "Jun",
+      "Jul",
+      "Agu",
+      "Sep",
+      "Okt",
+      "Nov",
+      "Des",
+    ],
+
+    datasets: [
+      {
+        label: "Pemasukan",
+        data: monthlyIncome,
+        borderColor: "#10b981",
+        backgroundColor:
+          "rgba(16,185,129,0.2)",
+        tension: 0.4,
+      },
+      {
+        label: "Pengeluaran",
+        data: monthlyExpense,
+        borderColor: "#ef4444",
+        backgroundColor:
+          "rgba(239,68,68,0.2)",
+        tension: 0.4,
+      },
+    ],
+  };
+
+  const chartOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        labels: {
+          color: "#fff",
+        },
+      },
+    },
+    scales: {
+      x: {
+        ticks: {
+          color: "#cbd5e1",
+        },
+        grid: {
+          color: "#334155",
+        },
+      },
+      y: {
+        ticks: {
+          color: "#cbd5e1",
+        },
+        grid: {
+          color: "#334155",
+        },
+      },
+    },
+  };
 
   const balance = income - expense;
   const expenseRatio =
@@ -173,6 +291,22 @@ export default function LaporanPage() {
               </div>
             </div>
 
+            <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 mb-8">
+              <h3 className="text-white font-semibold text-lg mb-6">
+                📈 Grafik Pemasukan vs Pengeluaran
+              </h3>
+
+              <div className="h-56">
+              <Line
+                data={chartData}
+                options={{
+                  ...chartOptions,
+                  maintainAspectRatio: false,
+                }}
+              />
+            </div>
+            </div>
+
             {/* Visualizations */}
             <div className="grid md:grid-cols-2 gap-6 mb-8">
               {/* Expense Ratio */}
@@ -227,50 +361,66 @@ export default function LaporanPage() {
                   Insights & Rekomendasi
                 </h3>
                 <div className="space-y-4">
-                  <div className="bg-slate-700 rounded-lg p-4 border-l-4 border-blue-400">
-                    <p className="text-slate-200 text-sm">
-                      <span className="font-semibold text-blue-400">
-                        💡 Tips:
-                      </span>{" "}
-                      Tingkat tabungan Anda
-                      adalah{" "}
-                      <span className="font-bold">
-                        {savingsRate}%
-                      </span>
-                      . Usahakan tingkatkan
-                      hingga 20%.
-                    </p>
-                  </div>
+                  {expenseRatio < 50 && (
+                <div className="bg-slate-700 rounded-lg p-4 border-l-4 border-green-400">
+                  <p className="text-slate-200 text-sm">
+                    <span className="font-semibold text-green-400">
+                      🎉 Sangat Baik:
+                    </span>{" "}
+                    Pengeluaran Anda hanya {expenseRatio}% dari
+                    pemasukan. Kondisi keuangan cukup sehat.
+                  </p>
+                </div>
+              )}
 
-                  {income > 0 && (
-                    <>
-                      <div className="bg-slate-700 rounded-lg p-4 border-l-4 border-emerald-400">
-                        <p className="text-slate-200 text-sm">
-                          <span className="font-semibold text-emerald-400">
-                            ✓ Baik:
-                          </span>{" "}
-                          Anda memiliki
-                          pendapatan yang
-                          stabil.
-                        </p>
-                      </div>
+              {expenseRatio >= 50 && expenseRatio <= 80 && (
+                <div className="bg-slate-700 rounded-lg p-4 border-l-4 border-blue-400">
+                  <p className="text-slate-200 text-sm">
+                    <span className="font-semibold text-blue-400">
+                      📊 Stabil:
+                    </span>{" "}
+                    Pengeluaran masih dalam batas aman,
+                    namun tetap perhatikan pengeluaran rutin.
+                  </p>
+                </div>
+              )}
 
-                      {expenseRatio > 80 && (
-                        <div className="bg-slate-700 rounded-lg p-4 border-l-4 border-orange-400">
-                          <p className="text-slate-200 text-sm">
-                            <span className="font-semibold text-orange-400">
-                              ⚠ Perhatian:
-                            </span>{" "}
-                            Pengeluaran Anda
-                            sangat tinggi.
-                            Pertimbangkan
-                            untuk mengurangi
-                            biaya.
-                          </p>
-                        </div>
-                      )}
-                    </>
-                  )}
+              {expenseRatio > 80 && (
+                <div className="bg-slate-700 rounded-lg p-4 border-l-4 border-orange-400">
+                  <p className="text-slate-200 text-sm">
+                    <span className="font-semibold text-orange-400">
+                      ⚠ Perhatian:
+                    </span>{" "}
+                    Pengeluaran mencapai {expenseRatio}% dari
+                    pemasukan. Pertimbangkan untuk mengurangi
+                    pengeluaran yang tidak penting.
+                  </p>
+                </div>
+              )}
+
+              {savingsRate >= 20 && (
+                <div className="bg-slate-700 rounded-lg p-4 border-l-4 border-emerald-400">
+                  <p className="text-slate-200 text-sm">
+                    <span className="font-semibold text-emerald-400">
+                      💰 Tabungan Sehat:
+                    </span>{" "}
+                    Anda berhasil menyisihkan {savingsRate}% dari
+                    pemasukan sebagai tabungan.
+                  </p>
+                </div>
+              )}
+
+              {balance > 0 && (
+                <div className="bg-slate-700 rounded-lg p-4 border-l-4 border-cyan-400">
+                  <p className="text-slate-200 text-sm">
+                    <span className="font-semibold text-cyan-400">
+                      📈 Saldo Positif:
+                    </span>{" "}
+                    Saldo Anda saat ini Rp{" "}
+                    {balance.toLocaleString("id-ID")}.
+                  </p>
+                </div>
+              )}
                 </div>
               </div>
             </div>

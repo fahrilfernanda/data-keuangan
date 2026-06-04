@@ -8,6 +8,7 @@ type Transaction = {
   id: number;
   title: string;
   amount: number;
+  account_id: number;
   transaction_date: string;
   categories: {
     name: string;
@@ -19,9 +20,11 @@ export default function TransaksiPage() {
   const [data, setData] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] =
-    useState("all");
+  useState("all");
+  const [search, setSearch] =
+  useState("");
   const [deleteLoading, setDeleteLoading] =
-    useState<number | null>(null);
+  useState<number | null>(null);
   const [deleteConfirm, setDeleteConfirm] =
     useState<number | null>(null);
 
@@ -55,28 +58,76 @@ export default function TransaksiPage() {
   }
 
   async function hapusTransaksi(id: number) {
-    setDeleteLoading(id);
+  setDeleteLoading(id);
 
-    const { error } = await supabase
-      .from("transactions")
-      .delete()
-      .eq("id", id);
+  const transaksi = data.find(
+    (item) => item.id === id
+  );
 
+  if (!transaksi) {
     setDeleteLoading(null);
-    setDeleteConfirm(null);
-
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
-    loadData();
+    return;
   }
 
+  // Ambil saldo akun
+  const { data: akun } = await supabase
+    .from("accounts")
+    .select("balance")
+    .eq("id", transaksi.account_id)
+    .single();
+
+  if (akun) {
+    const perubahan =
+      transaksi.categories.type === "income"
+        ? -transaksi.amount
+        : transaksi.amount;
+
+    await supabase
+      .from("accounts")
+      .update({
+        balance:
+          Number(akun.balance) +
+          perubahan,
+      })
+      .eq("id", transaksi.account_id);
+  }
+
+  const { error } = await supabase
+    .from("transactions")
+    .delete()
+    .eq("id", id);
+
+  setDeleteLoading(null);
+  setDeleteConfirm(null);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  loadData();
+}
+
   const filteredData = data.filter((item) => {
-    if (filterType === "all") return true;
-    return item.categories?.type === filterType;
-  });
+  const cocokKategori =
+    filterType === "all"
+      ? true
+      : item.categories?.type === filterType;
+
+  const cocokSearch =
+    item.title
+      .toLowerCase()
+      .includes(
+        search.toLowerCase()
+      ) ||
+    item.categories?.name
+      ?.toLowerCase()
+      .includes(
+        search.toLowerCase()
+      );
+
+  return cocokKategori && cocokSearch;
+});
 
   const totalIncome = data
     .filter(
@@ -196,6 +247,18 @@ export default function TransaksiPage() {
           </button>
         </div>
 
+        <div className="mb-6">
+        <input
+          type="text"
+          placeholder="Cari transaksi..."
+          value={search}
+          onChange={(e) =>
+            setSearch(e.target.value)
+          }
+          className="w-full px-4 py-3 rounded-lg bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-30 outline-none transition-all duration-200"
+        />
+      </div>
+
         {/* Transaction List */}
         <div className="space-y-4">
           {loading ? (
@@ -305,50 +368,43 @@ export default function TransaksiPage() {
                       </div>
 
                       {!showDeleteConfirm ? (
+                      <div className="flex gap-2">
+                        <Link
+                          href={`/transaksi/edit/${item.id}`}
+                          className="p-2 rounded-lg bg-slate-700 hover:bg-blue-600 text-slate-300 hover:text-white transition-all duration-200"
+                          aria-label="Edit transaction"
+                        >
+                          ✏️
+                        </Link>
+
                         <button
-                          onClick={() =>
-                            setDeleteConfirm(
-                              item.id
-                            )
-                          }
+                          onClick={() => setDeleteConfirm(item.id)}
                           disabled={isDeleting}
                           className="p-2 rounded-lg bg-slate-700 hover:bg-red-600 text-slate-300 hover:text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                           aria-label="Delete transaction"
                         >
                           🗑
                         </button>
-                      ) : (
-                        <div className="bg-red-500 bg-opacity-20 border border-red-500 border-opacity-30 rounded-lg p-3 flex gap-2">
-                          <button
-                            onClick={() =>
-                              hapusTransaksi(
-                                item.id
-                              )
-                            }
-                            disabled={
-                              isDeleting
-                            }
-                            className="px-3 py-1 rounded bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-all duration-200 disabled:opacity-50"
-                          >
-                            {isDeleting
-                              ? "..."
-                              : "Hapus"}
-                          </button>
-                          <button
-                            onClick={() =>
-                              setDeleteConfirm(
-                                null
-                              )
-                            }
-                            disabled={
-                              isDeleting
-                            }
-                            className="px-3 py-1 rounded bg-slate-600 hover:bg-slate-700 text-white text-sm font-semibold transition-all duration-200 disabled:opacity-50"
-                          >
-                            Batal
-                          </button>
-                        </div>
-                      )}
+                      </div>
+                    ) : (
+                      <div className="bg-red-500 bg-opacity-20 border border-red-500 border-opacity-30 rounded-lg p-3 flex gap-2">
+                        <button
+                          onClick={() => hapusTransaksi(item.id)}
+                          disabled={isDeleting}
+                          className="px-3 py-1 rounded bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-all duration-200 disabled:opacity-50"
+                        >
+                          {isDeleting ? "..." : "Hapus"}
+                        </button>
+
+                        <button
+                          onClick={() => setDeleteConfirm(null)}
+                          disabled={isDeleting}
+                          className="px-3 py-1 rounded bg-slate-600 hover:bg-slate-700 text-white text-sm font-semibold transition-all duration-200 disabled:opacity-50"
+                        >
+                          Batal
+                        </button>
+                      </div>
+                    )}
                     </div>
                   </div>
                 </div>

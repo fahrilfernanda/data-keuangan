@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -11,10 +11,18 @@ type Category = {
   type: string;
 };
 
+type Account = {
+  id: number;
+  name: string;
+};
+
 export default function TambahTransaksi() {
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [accountId, setAccountId] = useState("");
+  const [accounts, setAccounts] =
+  useState<Account[]>([]);
   const [categories, setCategories] =
     useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
@@ -25,29 +33,47 @@ export default function TambahTransaksi() {
   const router = useRouter();
 
   useEffect(() => {
-    loadKategori();
-  }, []);
+  loadKategori();
+  loadAccounts();
+}, []);
 
   async function loadKategori() {
-    try {
-      const { data, error } = await supabase
-        .from("categories")
-        .select("*")
-        .order("type")
-        .order("name");
+  try {
+    const { data, error } = await supabase
+      .from("categories")
+      .select("*")
+      .order("type")
+      .order("name");
 
-      if (error) {
-        console.error(error);
-        setError("Gagal memuat kategori");
-        return;
-      }
-
-      setCategories(data || []);
-    } finally {
-      setLoadingCategories(false);
+    if (error) {
+      console.error(error);
+      setError("Gagal memuat kategori");
+      return;
     }
-  }
 
+    setCategories(data || []);
+  } finally {
+    setLoadingCategories(false);
+  }
+}
+
+async function loadAccounts() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  const { data, error } = await supabase
+    .from("accounts")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("name");
+
+  if (!error) {
+    setAccounts(data || []);
+  }
+}
   async function simpan(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -70,11 +96,23 @@ export default function TambahTransaksi() {
     }
 
     if (!categoryId) {
-      setError("Pilih kategori terlebih dahulu");
-      return;
-    }
+  setError("Pilih kategori terlebih dahulu");
+  return;
+}
 
-    setLoading(true);
+if (!accountId) {
+  setError("Pilih akun terlebih dahulu");
+  return;
+}
+
+if (accounts.length === 0) {
+  setError(
+    "Belum ada akun. Silakan buat akun terlebih dahulu."
+  );
+  return;
+}
+
+setLoading(true);
 
     const {
       data: { user },
@@ -86,36 +124,73 @@ export default function TambahTransaksi() {
       return;
     }
 
-    const { error: insertError } =
-      await supabase.from("transactions").insert({
+
+  const nominal = Number(
+    amount.replace(/\./g, "")
+  );
+
+  const category = categories.find(
+    (c) => c.id === Number(categoryId)
+  );
+
+  // Simpan transaksi
+  const { error: insertError } =
+    await supabase
+      .from("transactions")
+      .insert({
         user_id: user.id,
         title,
-        amount: Number(
-          amount.replace(/\./g, "")
-          ),
+        amount: nominal,
         category_id: Number(categoryId),
+        account_id: Number(accountId),
         transaction_date: new Date()
           .toISOString()
           .split("T")[0],
       });
 
+  if (insertError) {
     setLoading(false);
-
-    if (insertError) {
-      console.error(insertError);
-      setError(insertError.message);
-      return;
-    }
-
-    setSuccess(true);
-    setTitle("");
-    setAmount("");
-    setCategoryId("");
-
-    setTimeout(() => {
-      router.push("/dashboard");
-    }, 1500);
+    setError(insertError.message);
+    return;
   }
+
+  // Update saldo akun
+  if (category) {
+    const perubahan =
+      category.type === "income"
+        ? nominal
+        : -nominal;
+
+    const { data: akun } = await supabase
+      .from("accounts")
+      .select("balance")
+      .eq("id", Number(accountId))
+      .single();
+
+    if (akun) {
+      await supabase
+        .from("accounts")
+        .update({
+          balance:
+            Number(akun.balance) +
+            perubahan,
+        })
+        .eq("id", Number(accountId));
+    }
+  }
+
+  setLoading(false);
+
+  setSuccess(true);
+  setTitle("");
+  setAmount("");
+  setCategoryId("");
+  setAccountId("");
+
+  setTimeout(() => {
+    router.push("/dashboard");
+  }, 1500);
+}
 
   const selectedCategory = categories.find(
     (cat) => cat.id === Number(categoryId)
@@ -280,6 +355,49 @@ function tambahNominal(
     </button>
   </div>
 </div>
+
+      <div>
+        <label className="block text-sm font-semibold text-slate-200 mb-3">
+          Akun
+        </label>
+
+        <select
+          value={accountId}
+          onChange={(e) => setAccountId(e.target.value)}
+          disabled={loading || success}
+          className="w-full px-4 py-3 rounded-lg bg-slate-700 border border-slate-600 text-white"
+        >
+          <option value="">
+            {accounts.length === 0
+              ? "-- Belum Ada Akun --"
+              : "-- Pilih Akun --"}
+          </option>
+
+          {accounts.map((account) => (
+            <option
+              key={account.id}
+              value={account.id}
+            >
+              {account.name}
+            </option>
+          ))}
+        </select>
+
+        {accounts.length === 0 && (
+          <div className="mt-2">
+            <p className="text-sm text-red-400">
+              Belum ada akun. Buat akun terlebih dahulu.
+            </p>
+
+            <Link
+              href="/akun"
+              className="text-blue-400 text-sm hover:underline"
+            >
+              + Tambah Akun
+            </Link>
+          </div>
+        )}
+      </div>
 
             {/* Category Select */}
             <div>
