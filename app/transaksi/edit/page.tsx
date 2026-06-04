@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 
@@ -12,7 +12,8 @@ type Category = {
 };
 
 export default function EditTransaksiPage() {
-  const { id } = useParams();
+  const searchParams = useSearchParams();
+  const id = searchParams.get("id");
   const router = useRouter();
 
   const [title, setTitle] = useState("");
@@ -23,36 +24,41 @@ export default function EditTransaksiPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+  if (id) {
     loadData();
-  }, []);
-
-  async function loadData() {
-    const { data: trx } = await supabase
-      .from("transactions")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    const { data: cats } = await supabase
-      .from("categories")
-      .select("*")
-      .order("name");
-
-    if (trx) {
-      setTitle(trx.title);
-      setAmount(
-        Number(trx.amount).toLocaleString(
-          "id-ID"
-        )
-      );
-      setCategoryId(
-        String(trx.category_id)
-      );
-    }
-
-    setCategories(cats || []);
-    setLoading(false);
   }
+}, [id]);
+
+  
+  async function loadData() {
+  if (!id) return;
+
+  const { data: trx } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  const { data: cats } = await supabase
+    .from("categories")
+    .select("*")
+    .order("name");
+
+  if (trx) {
+    setTitle(trx.title);
+    setAmount(
+      Number(trx.amount).toLocaleString(
+        "id-ID"
+      )
+    );
+    setCategoryId(
+      String(trx.category_id)
+    );
+  }
+
+  setCategories(cats || []);
+  setLoading(false);
+}
 
   function formatRupiah(value: string) {
     const number =

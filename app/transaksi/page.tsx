@@ -370,7 +370,7 @@ export default function TransaksiPage() {
                       {!showDeleteConfirm ? (
                       <div className="flex gap-2">
                         <Link
-                          href={`/transaksi/edit/${item.id}`}
+                          href={`/transaksi/edit?id=${item.id}`}
                           className="p-2 rounded-lg bg-slate-700 hover:bg-blue-600 text-slate-300 hover:text-white transition-all duration-200"
                           aria-label="Edit transaction"
                         >
