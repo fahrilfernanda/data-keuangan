@@ -390,7 +390,7 @@ function tambahNominal(
             </p>
 
             <Link
-              href="/akun"
+              href="/akun/edit"
               className="text-blue-400 text-sm hover:underline"
             >
               + Tambah Akun
