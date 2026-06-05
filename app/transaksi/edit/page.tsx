@@ -287,7 +287,7 @@ export default function EditTransaksiPage() {
               <Sparkles className="w-4 h-4 text-zinc-900" strokeWidth={2.5} />
             </div>
             <span className="text-sm font-semibold tracking-tight text-white/90">
-              Finansa
+              Edit Transaksi
             </span>
           </div>
         </nav>

@@ -484,7 +484,7 @@ export default function TransaksiPage() {
         {/* Footer */}
         <footer className="pt-8 mt-12 border-t border-white/[0.05] flex flex-col md:flex-row items-center justify-between gap-3">
           <p className="text-xs text-zinc-600">
-            © {new Date().getFullYear()} Finansa — Kelola keuangan dengan cerdas.
+            © {new Date().getFullYear()}Transaksi — Kelola keuangan dengan cerdas.
           </p>
         </footer>
       </div>

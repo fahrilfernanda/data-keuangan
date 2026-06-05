@@ -126,7 +126,7 @@ export default function RegisterPage() {
             <Sparkles className="w-4 h-4 text-zinc-900" strokeWidth={2.5} />
           </div>
           <span className="text-sm font-semibold tracking-tight text-white/90">
-            Finansa
+            Registerasi
           </span>
         </div>
 
@@ -178,7 +178,7 @@ export default function RegisterPage() {
               <Sparkles className="w-4 h-4 text-zinc-900" strokeWidth={2.5} />
             </div>
             <span className="text-sm font-semibold tracking-tight text-white/90">
-              Finansa
+              Registerasi
             </span>
           </div>
 

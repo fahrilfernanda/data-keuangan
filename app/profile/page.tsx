@@ -294,7 +294,7 @@ export default function ProfilPage() {
         {/* Footer */}
         <footer className="pt-8 mt-12 border-t border-white/[0.05] flex flex-col md:flex-row items-center justify-between gap-3 animate-fadeIn">
           <p className="text-xs text-zinc-600">
-            © {new Date().getFullYear()} Finansa — Kelola keuangan dengan cerdas.
+            © {new Date().getFullYear()} Profile — Kelola keuangan dengan cerdas.
           </p>
           <div className="flex items-center gap-1.5 text-xs text-zinc-600">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
