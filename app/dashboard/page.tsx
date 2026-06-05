@@ -1,503 +1,629 @@
-"use client";
+  "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { supabase } from "@/lib/supabase";
-import router from "next/dist/shared/lib/router/router";
+  import { useEffect, useState } from "react";
+  import Link from "next/link";
+  import { supabase } from "@/lib/supabase";
+  import {
+    ArrowUpRight,
+    ArrowDownRight,
+    Wallet,
+    Target,
+    Plus,
+    Receipt,
+    LineChart,
+    UserCircle2,
+    LogOut,
+    Sparkles,
+    TrendingUp,
+    ChevronRight,
+    Eye,
+    EyeOff,
+    Pencil,
+    Check,
+    X,
+  } from "lucide-react";
 
-export default function DashboardPage() {
-  const [saldo, setSaldo] = useState(0);
-  const [income, setIncome] = useState(0);
-  const [expense, setExpense] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [userName, setUserName] = useState("");
-  const [targetTabungan, setTargetTabungan] = useState(10000000);
-  const [showTarget, setShowTarget] = useState<boolean>(true);
-  const [editTarget, setEditTarget] = useState(false);
-  const [inputTarget, setInputTarget] = useState("10.000.000");
+  export default function DashboardPage() {
+    const [saldo, setSaldo] = useState(0);
+    const [income, setIncome] = useState(0);
+    const [expense, setExpense] = useState(0);
+    const [loading, setLoading] = useState(true);
+    const [userName, setUserName] = useState("");
+    const [targetTabungan, setTargetTabungan] = useState(10000000);
+    const [showTarget, setShowTarget] = useState<boolean>(true);
+    const [editTarget, setEditTarget] = useState(false);
+    const [inputTarget, setInputTarget] = useState("10.000.000");
+    const [hideBalance, setHideBalance] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+    useEffect(() => {
+      loadData();
+    }, []);
 
-  useEffect(() => {
-  const savedShowTarget =
-    localStorage.getItem("showTarget");
-
-  if (savedShowTarget !== null) {
-    setShowTarget(
-      JSON.parse(savedShowTarget)
-    );
-  }
-  }, []);
-
-  async function loadData() {
-    try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError) {
-        console.error(userError);
-        setLoading(false);
-        return;
+    useEffect(() => {
+      const savedShowTarget = localStorage.getItem("showTarget");
+      if (savedShowTarget !== null) {
+        setShowTarget(JSON.parse(savedShowTarget));
       }
+      const savedTarget = localStorage.getItem("targetTabungan");
+      if (savedTarget !== null) {
+        const num = Number(savedTarget);
+        setTargetTabungan(num);
+        setInputTarget(num.toLocaleString("id-ID"));
+      }
+    }, []);
 
-      if (!user) {
+    async function loadData() {
+      try {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError) {
+          console.error(userError);
+          setLoading(false);
+          return;
+        }
+
+        if (!user) {
         setLoading(false);
         window.location.href = "/login";
         return;
       }
-      setUserName(user.email?.split("@")[0] || "User");
+        const { data: profile } = await supabase
+        .from("profile")
+        .select("nama")
+        .eq("id", user.id)
+        .single();
 
-      const { data: accountsData, error: accountsError } = await supabase
-        .from("accounts")
-        .select("balance")
-        .eq("user_id", user.id);
+        console.log(profile);
 
-      if (accountsError) {
-        console.error(accountsError);
-        setLoading(false);
-        return;
-      }
-
-      const totalAccountBalance = (accountsData || []).reduce(
-        (sum: number, account: any) => sum + Number(account.balance),
-        0
+        setUserName(
+        profile?.nama ||
+        user.email?.split("@")[0] ||
+        "User"
       );
 
-      const { data, error } = await supabase
-        .from("transactions")
-        .select(`
-          amount,
-          categories (
-            type
-          )
-        `)
-        .eq("user_id", user.id);
+        const { error: accountsError } = await supabase
+          .from("accounts")
+          .select("balance")
+          .eq("user_id", user.id);
 
-      if (error) {
-        console.error(error);
+        if (accountsError) {
+          console.error(accountsError);
+        }
+
+        const { data, error } = await supabase
+          .from("transactions")
+          .select(`
+            amount,
+            categories (
+              type
+            )
+          `)
+          .eq("user_id", user.id);
+
+        if (error) {
+          console.error(error);
+          setLoading(false);
+          return;
+        }
+
+        let totalIncome = 0;
+        let totalExpense = 0;
+
+        (data || []).forEach((item: any) => {
+          const category = Array.isArray(item.categories)
+            ? item.categories[0]
+            : item.categories;
+
+          const type = category?.type;
+
+          if (type === "income") totalIncome += Number(item.amount);
+          if (type === "expense") totalExpense += Number(item.amount);
+        });
+
+        setIncome(totalIncome);
+        setExpense(totalExpense);
+        setSaldo(totalIncome - totalExpense);
+      } catch (err) {
+        console.error("Dashboard Error:", err);
+      } finally {
         setLoading(false);
-        return;
       }
-
-      let totalIncome = 0;
-      let totalExpense = 0;
-
-      (data || []).forEach((item: any) => {
-        const category = Array.isArray(item.categories)
-          ? item.categories[0]
-          : item.categories;
-
-        const type = category?.type;
-
-        if (type === "income") {
-          totalIncome += Number(item.amount);
-        }
-
-        if (type === "expense") {
-          totalExpense += Number(item.amount);
-        }
-      });
-
-      setIncome(totalIncome);
-      setExpense(totalExpense);
-
-      setSaldo(totalIncome - totalExpense);
-    } catch (err) {
-      console.error("Dashboard Error:", err);
-    } finally {
-      setLoading(false);
     }
-  }
 
-  async function handleLogout() {
-    try {
-      const { error } = await supabase.auth.signOut();
-
-      if (error) {
-        console.error("Logout error:", error);
-        return;
+    async function handleLogout() {
+      try {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+          console.error("Logout error:", error);
+          return;
+        }
+        window.location.replace("/data-keuangan/login");
+      } catch (err) {
+        console.error("Logout error:", err);
       }
-
-      window.location.replace("/data-keuangan/login");
-    } catch (err) {
-      console.error("Logout error:", err);
     }
-  }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-12 h-12 border-4 border-slate-700 border-t-blue-500 rounded-full animate-spin"></div>
-          <p className="text-slate-400">Memuat Dashboard...</p>
+    function handleTargetChange(e: React.ChangeEvent<HTMLInputElement>) {
+      setInputTarget(formatRupiah(e.target.value));
+    }
+
+    function formatRupiah(value: string) {
+      const number = value.replace(/\D/g, "");
+      return number.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+
+    function maskAmount(value: number) {
+      if (hideBalance) return "•• ••• •••";
+      return value.toLocaleString("id-ID");
+    }
+
+    const progress =
+      targetTabungan > 0 ? Math.min((saldo / targetTabungan) * 100, 100) : 0;
+    const remaining = Math.max(targetTabungan - saldo, 0);
+
+    if (loading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-[#0b0d10] text-white">
+          <div className="flex flex-col items-center gap-5">
+            <div className="relative w-12 h-12">
+              <div className="absolute inset-0 rounded-full border-2 border-amber-500/20" />
+              <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-amber-400 animate-spin" />
+            </div>
+            <p className="text-zinc-500 text-xs tracking-[0.25em] uppercase font-medium">
+              Memuat Dashboard
+            </p>
+          </div>
         </div>
+      );
+    }
+
+    const greeting = (() => {
+      const h = new Date().getHours();
+      if (h < 11) return "Selamat pagi";
+      if (h < 15) return "Selamat siang";
+      if (h < 19) return "Selamat sore";
+      return "Selamat malam";
+    })();
+
+    return (
+      <div className="min-h-screen bg-[#0b0d10] text-white relative overflow-hidden font-sans">
+        {/* Ambient background */}
+        <div className="pointer-events-none fixed inset-0">
+          <div className="absolute -top-40 -left-40 w-[520px] h-[520px] rounded-full bg-amber-500/[0.06] blur-[120px]" />
+          <div className="absolute top-1/3 -right-40 w-[520px] h-[520px] rounded-full bg-emerald-500/[0.05] blur-[120px]" />
+          <div
+            className="absolute inset-0 opacity-[0.03]"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.6) 1px, transparent 0)",
+              backgroundSize: "32px 32px",
+            }}
+          />
+        </div>
+
+        <div className="relative z-10 px-5 md:px-10 lg:px-16 py-8 md:py-12 max-w-7xl mx-auto">
+          {/* Top Nav */}
+          <nav className="flex items-center justify-between mb-14 animate-fadeIn">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
+                <Sparkles className="w-4 h-4 text-zinc-900" strokeWidth={2.5} />
+              </div>
+              <span className="text-sm font-semibold tracking-tight text-white/90">
+                Dasboard
+              </span>
+            </div>
+
+            <button
+              onClick={handleLogout}
+              className="group flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.03] hover:bg-white/[0.06] text-zinc-400 hover:text-white text-xs font-medium border border-white/[0.06] hover:border-white/[0.12] transition-all duration-300"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Keluar</span>
+            </button>
+          </nav>
+
+          {/* Hero */}
+          <header className="mb-14 animate-fadeIn">
+            <p className="text-xs uppercase tracking-[0.3em] text-amber-400/80 mb-3 font-medium">
+              {greeting}
+            </p>
+            <h1 className="text-4xl md:text-6xl font-semibold tracking-tight leading-[1.05] mb-3">
+              Halo,{" "}
+              <span className="italic font-light text-amber-200/90">
+                {userName}
+              </span>
+            </h1>
+            <p className="text-zinc-500 text-sm md:text-base max-w-md font-light">
+              Berikut ringkasan keuangan Anda hari ini. Tetap konsisten untuk
+              mencapai target.
+            </p>
+          </header>
+
+          {/* Balance hero card */}
+          <section
+            className="mb-6 animate-slideUp"
+            style={{ animationDelay: "80ms" }}
+          >
+            <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-zinc-900 via-zinc-900 to-black border border-white/[0.06] p-8 md:p-10">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/[0.08] rounded-full blur-3xl" />
+              <div className="absolute bottom-0 left-1/3 w-48 h-48 bg-emerald-500/[0.05] rounded-full blur-3xl" />
+
+              <div className="relative flex items-start justify-between mb-8">
+                <div>
+                  <div className="flex items-center gap-2 text-zinc-500 text-xs uppercase tracking-[0.25em] font-medium mb-3">
+                    <Wallet className="w-3.5 h-3.5" />
+                    Saldo Total
+                  </div>
+                  <div className="flex items-baseline gap-3">
+                    <span className="text-zinc-500 text-2xl font-light">Rp</span>
+                    <span
+                      className={`text-5xl md:text-7xl font-semibold tracking-tight tabular-nums ${
+                        saldo >= 0 ? "text-white" : "text-rose-400"
+                      }`}
+                    >
+                      {maskAmount(saldo)}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setHideBalance(!hideBalance)}
+                  className="p-2.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] transition-all"
+                  aria-label="toggle balance visibility"
+                >
+                  {hideBalance ? (
+                    <EyeOff className="w-4 h-4 text-zinc-400" />
+                  ) : (
+                    <Eye className="w-4 h-4 text-zinc-400" />
+                  )}
+                </button>
+              </div>
+
+              <div className="relative grid grid-cols-2 gap-4 pt-6 border-t border-white/[0.06]">
+                <div>
+                  <div className="flex items-center gap-1.5 text-xs text-zinc-500 mb-2">
+                    <ArrowUpRight className="w-3.5 h-3.5 text-emerald-400" />
+                    Pemasukan
+                  </div>
+                  <p className="text-xl md:text-2xl font-semibold text-emerald-300 tabular-nums">
+                    Rp {maskAmount(income)}
+                  </p>
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5 text-xs text-zinc-500 mb-2">
+                    <ArrowDownRight className="w-3.5 h-3.5 text-rose-400" />
+                    Pengeluaran
+                  </div>
+                  <p className="text-xl md:text-2xl font-semibold text-rose-300 tabular-nums">
+                    Rp {maskAmount(expense)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <div className="h-1.5 w-full bg-white/[0.04] rounded-full overflow-hidden flex">
+                  {(() => {
+                    const total = income + expense || 1;
+                    const incomePct = (income / total) * 100;
+                    return (
+                      <>
+                        <div
+                          className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400"
+                          style={{ width: `${incomePct}%` }}
+                        />
+                        <div
+                          className="h-full bg-gradient-to-r from-rose-500 to-rose-400"
+                          style={{ width: `${100 - incomePct}%` }}
+                        />
+                      </>
+                    );
+                  })()}
+                </div>
+                <div className="flex justify-between mt-2 text-[10px] text-zinc-500 uppercase tracking-wider">
+                  <span>Cashflow</span>
+                  <span
+                    className={
+                      saldo >= 0 ? "text-emerald-400" : "text-rose-400"
+                    }
+                  >
+                    {saldo >= 0 ? "Positif" : "Negatif"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Small stat cards */}
+          <section
+            className="grid grid-cols-2 gap-3 md:gap-4 mb-10 animate-slideUp"
+            style={{ animationDelay: "150ms" }}
+          >
+            <div className="rounded-2xl bg-white/[0.02] border border-white/[0.05] p-5 hover:bg-white/[0.04] transition-colors">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+                  Income
+                </p>
+                <div className="w-7 h-7 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                  <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                </div>
+              </div>
+              <p className="text-lg md:text-xl font-semibold text-white tabular-nums">
+                Rp {maskAmount(income)}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-white/[0.02] border border-white/[0.05] p-5 hover:bg-white/[0.04] transition-colors">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+                  Expense
+                </p>
+                <div className="w-7 h-7 rounded-full bg-rose-500/10 flex items-center justify-center">
+                  <ArrowDownRight className="w-3.5 h-3.5 text-rose-400" />
+                </div>
+              </div>
+              <p className="text-lg md:text-xl font-semibold text-white tabular-nums">
+                Rp {maskAmount(expense)}
+              </p>
+            </div>
+          </section>
+
+          {/* Target Tabungan */}
+          {showTarget && (
+            <section
+              className="mb-10 animate-slideUp"
+              style={{ animationDelay: "220ms" }}
+            >
+              <div className="rounded-3xl bg-gradient-to-br from-zinc-900/80 to-zinc-900/40 border border-white/[0.06] p-7 md:p-9 backdrop-blur-xl">
+                <div className="flex items-start justify-between gap-4 mb-7">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+                      <Target className="w-5 h-5 text-amber-400" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-semibold tracking-tight">
+                        Target Tabungan
+                      </h2>
+                      <p className="text-xs text-zinc-500 mt-0.5">
+                        Capai tujuan keuangan langkah demi langkah
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setEditTarget(!editTarget)}
+                      className="p-2 rounded-full bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] text-zinc-400 hover:text-white transition-all"
+                      aria-label="edit target"
+                    >
+                      {editTarget ? (
+                        <X className="w-3.5 h-3.5" />
+                      ) : (
+                        <Pencil className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowTarget(false);
+                        localStorage.setItem("showTarget", JSON.stringify(false));
+                      }}
+                      className="p-2 rounded-full bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] text-zinc-400 hover:text-white transition-all"
+                      aria-label="hide target"
+                    >
+                      <EyeOff className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {editTarget && (
+                  <div className="mb-7 flex gap-2 animate-fadeIn">
+                    <div className="flex-1 relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">
+                        Rp
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={inputTarget}
+                        onChange={handleTargetChange}
+                        className="w-full pl-11 pr-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/10 transition-all tabular-nums"
+                        placeholder="10.000.000"
+                      />
+                    </div>
+                    <button
+                      onClick={() => {
+                        const newTarget = Number(inputTarget.replace(/\./g, ""));
+                        setTargetTabungan(newTarget);
+                        localStorage.setItem("targetTabungan", String(newTarget));
+                        setEditTarget(false);
+                      }}
+                      className="px-4 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-900 font-semibold text-sm transition-all flex items-center gap-1.5"
+                    >
+                      <Check className="w-4 h-4" />
+                      Simpan
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex items-end justify-between mb-4">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1.5">
+                      Terkumpul
+                    </p>
+                    <p className="text-3xl md:text-4xl font-semibold tabular-nums">
+                      <span className="text-zinc-500 text-base font-light mr-1">
+                        Rp
+                      </span>
+                      {maskAmount(Math.max(saldo, 0))}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1.5">
+                      dari
+                    </p>
+                    <p className="text-base text-zinc-400 font-medium tabular-nums">
+                      Rp {targetTabungan.toLocaleString("id-ID")}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <div className="w-full h-2 bg-white/[0.04] rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-amber-400 via-amber-300 to-emerald-400 rounded-full transition-all duration-1000 ease-out"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center mt-3">
+                    <span className="text-xs font-semibold text-amber-300 tabular-nums">
+                      {progress.toFixed(1)}%
+                    </span>
+                    <span className="text-xs text-zinc-500">
+                      Sisa{" "}
+                      <span className="text-white font-medium tabular-nums">
+                        Rp {remaining.toLocaleString("id-ID")}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {!showTarget && (
+            <section className="mb-10 animate-slideUp">
+              <button
+                onClick={() => {
+                  setShowTarget(true);
+                  localStorage.setItem("showTarget", JSON.stringify(true));
+                }}
+                className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] text-sm text-zinc-300 hover:text-white transition-all"
+              >
+                <Target className="w-4 h-4 text-amber-400" />
+                Aktifkan Target Tabungan
+              </button>
+            </section>
+          )}
+
+          {/* Quick actions */}
+          <section
+            className="mb-10 animate-slideUp"
+            style={{ animationDelay: "300ms" }}
+          >
+            <div className="flex items-end justify-between mb-5">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-zinc-400">
+                Aksi Cepat
+              </h3>
+              <span className="text-xs text-zinc-600">5 menu</span>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+              {[
+                {
+                  href: "/transaksi/tambah",
+                  label: "Tambah",
+                  sub: "Catat transaksi baru",
+                  icon: Plus,
+                  accent: "text-amber-300 bg-amber-500/10 border-amber-500/20",
+                  primary: true,
+                },
+                {
+                  href: "/transaksi",
+                  label: "Riwayat",
+                  sub: "Semua transaksi",
+                  icon: Receipt,
+                  accent: "text-zinc-300 bg-white/[0.04] border-white/[0.06]",
+                },
+                {
+                  href: "/laporan",
+                  label: "Laporan",
+                  sub: "Analisis & insight",
+                  icon: LineChart,
+                  accent: "text-zinc-300 bg-white/[0.04] border-white/[0.06]",
+                },
+                {
+                  href: "/akun/edit",
+                  label: "Akun",
+                  sub: "Kelola rekening",
+                  icon: Wallet,
+                  accent: "text-zinc-300 bg-white/[0.04] border-white/[0.06]",
+                },
+                {
+                  href: "/profile",
+                  label: "Profil",
+                  sub: "Pengaturan akun",
+                  icon: UserCircle2,
+                  accent: "text-zinc-300 bg-white/[0.04] border-white/[0.06]",
+                },
+              ].map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`group relative rounded-2xl border p-5 transition-all duration-300 hover:-translate-y-0.5 ${
+                      item.primary
+                        ? "bg-gradient-to-br from-amber-400 to-amber-500 border-amber-300 hover:shadow-2xl hover:shadow-amber-500/20"
+                        : "bg-white/[0.02] border-white/[0.05] hover:bg-white/[0.05] hover:border-white/[0.1]"
+                    }`}
+                  >
+                    <div
+                      className={`w-9 h-9 rounded-xl border flex items-center justify-center mb-4 ${
+                        item.primary
+                          ? "bg-zinc-900/20 border-zinc-900/20 text-zinc-900"
+                          : item.accent
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" strokeWidth={2.2} />
+                    </div>
+                    <p
+                      className={`text-sm font-semibold tracking-tight ${
+                        item.primary ? "text-zinc-900" : "text-white"
+                      }`}
+                    >
+                      {item.label}
+                    </p>
+                    <p
+                      className={`text-[11px] mt-0.5 ${
+                        item.primary ? "text-zinc-900/70" : "text-zinc-500"
+                      }`}
+                    >
+                      {item.sub}
+                    </p>
+                    <ChevronRight
+                      className={`w-4 h-4 absolute top-5 right-5 transition-transform group-hover:translate-x-0.5 ${
+                        item.primary ? "text-zinc-900/60" : "text-zinc-600"
+                      }`}
+                    />
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Footer */}
+          <footer className="pt-8 mt-12 border-t border-white/[0.05] flex flex-col md:flex-row items-center justify-between gap-3">
+            <p className="text-xs text-zinc-600">
+              © {new Date().getFullYear()} Finansa — Kelola keuangan dengan cerdas.
+            </p>
+            <div className="flex items-center gap-1.5 text-xs text-zinc-600">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Tersinkron otomatis
+            </div>
+          </footer>
+        </div>
+
+        <style jsx>{`
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          @keyframes slideUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .animate-fadeIn { animation: fadeIn 0.7s ease-out both; }
+          .animate-slideUp { animation: slideUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+        `}</style>
       </div>
     );
   }
-
-  function handleTargetChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setInputTarget(formatRupiah(e.target.value));
-  }
-
-  function formatRupiah(value: string) {
-    const number = value.replace(/\D/g, "");
-    return number.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  }
-
-  const progress =
-    targetTabungan > 0 ? Math.min((saldo / targetTabungan) * 100, 100) : 0;
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Background decorative elements - UNCHANGED */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 right-10 w-72 h-72 bg-blue-500 rounded-full mix-blend-screen filter blur-3xl opacity-10"></div>
-        <div className="absolute bottom-20 left-10 w-72 h-72 bg-purple-500 rounded-full mix-blend-screen filter blur-3xl opacity-10"></div>
-      </div>
-
-      <div className="relative z-10 p-6 md:p-8 max-w-7xl mx-auto">
-        {/* Header Section */}
-        <div className="mb-12 flex justify-between items-start md:items-center flex-col md:flex-row gap-6 animate-fade-in">
-          <div>
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-2 bg-clip-text bg-gradient-to-r from-white via-slate-100 to-slate-300">
-              Selamat datang,
-            </h1>
-            <p className="text-slate-400 text-lg font-medium tracking-wide">
-              {userName}
-            </p>
-          </div>
-
-          <button
-            onClick={handleLogout}
-            className="group px-6 py-3 rounded-xl bg-gradient-to-br from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-red-900/50 flex items-center gap-2"
-          >
-            <span>Keluar</span>
-            <span className="group-hover:translate-x-1 transition-transform">→</span>
-          </button>
-        </div>
-
-        {/* Stats Cards Grid */}
-        <div className="grid md:grid-cols-3 gap-6 mb-10 animate-fade-in" style={{ animationDelay: "100ms" }}>
-          {/* Income Card */}
-          <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-700 p-8 border border-emerald-500 border-opacity-30 hover:border-opacity-50 transition-all duration-500 hover:shadow-lg hover:shadow-emerald-900/50 transform hover:-translate-y-1">
-            <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="relative z-10">
-              <div className="flex justify-between items-start mb-6">
-                <h2 className="text-emerald-100 font-semibold text-sm uppercase tracking-wide opacity-90">
-                  Total Pemasukan
-                </h2>
-                <div className="text-2xl animate-bounce">↑</div>
-              </div>
-
-              <p className="text-3xl md:text-4xl font-bold text-white mb-3">
-                Rp {income.toLocaleString("id-ID")}
-              </p>
-
-              <p className="text-emerald-100 text-xs opacity-75">
-                Saat ini
-              </p>
-            </div>
-          </div>
-
-          {/* Expense Card */}
-          <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-600 to-red-700 p-8 border border-red-500 border-opacity-30 hover:border-opacity-50 transition-all duration-500 hover:shadow-lg hover:shadow-red-900/50 transform hover:-translate-y-1">
-            <div className="absolute inset-0 bg-gradient-to-br from-red-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="relative z-10">
-              <div className="flex justify-between items-start mb-6">
-                <h2 className="text-red-100 font-semibold text-sm uppercase tracking-wide opacity-90">
-                  Total Pengeluaran
-                </h2>
-                <div className="text-2xl animate-bounce">↓</div>
-              </div>
-
-              <p className="text-3xl md:text-4xl font-bold text-white mb-3">
-                Rp {expense.toLocaleString("id-ID")}
-              </p>
-
-              <p className="text-red-100 text-xs opacity-75">
-                Saat ini
-              </p>
-            </div>
-          </div>
-
-          {/* Balance Card */}
-          <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 p-8 border border-blue-500 border-opacity-30 hover:border-opacity-50 transition-all duration-500 hover:shadow-lg hover:shadow-blue-900/50 transform hover:-translate-y-1">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="relative z-10">
-              <div className="flex justify-between items-start mb-6">
-                <h2 className="text-blue-100 font-semibold text-sm uppercase tracking-wide opacity-90">
-                  Saldo Saat Ini
-                </h2>
-                <div className="text-2xl">◆</div>
-              </div>
-
-              <p
-                className={`text-3xl md:text-4xl font-bold mb-3 ${
-                  saldo >= 0 ? "text-white" : "text-red-200"
-                }`}
-              >
-                Rp {saldo.toLocaleString("id-ID")}
-              </p>
-
-              <p className="text-blue-100 text-xs opacity-75">
-                Saldo tersedia
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Target Savings Section */}
-        {showTarget && (
-          <div className="lg:col-span-4 bg-gradient-to-br from-slate-800 to-slate-800/50 border border-slate-700/50 rounded-2xl p-8 mb-10 shadow-xl backdrop-blur-sm animate-fade-in" style={{ animationDelay: "200ms" }}>
-            <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-6 mb-6">
-              <div className="flex-1">
-                <h2 className="text-2xl font-bold text-white mb-3 flex items-center gap-2">
-                  <span className="text-2xl">🎯</span>
-                  Target Tabungan
-                </h2>
-
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700/50 border border-slate-600/50">
-                  <span className="text-slate-400 text-sm">Target:</span>
-                  <span className="text-white font-semibold">
-                    Rp {targetTabungan.toLocaleString("id-ID")}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setEditTarget(!editTarget)}
-                  className={`px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300 transform hover:scale-105 ${
-                    editTarget
-                      ? "bg-slate-600 hover:bg-slate-500 text-white"
-                      : "bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-blue-900/50"
-                  }`}
-                >
-                  {editTarget ? "Batal" : "Ubah Target"}
-                </button>
-
-                <button
-                  onClick={() => {
-                    setShowTarget(false);
-                    localStorage.setItem(
-                      "showTarget",
-                      JSON.stringify(false)
-                    );
-                  }}
-                  className="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-medium text-sm transition-all duration-300"
-                >
-                  Tutup
-                </button>
-              </div>
-            </div>
-
-            {editTarget && (
-              <div className="mb-6 flex gap-3">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={inputTarget}
-                  onChange={handleTargetChange}
-                  className="flex-1 px-4 py-3 rounded-lg bg-slate-700/50 border border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                  placeholder="Masukkan target tabungan"
-                />
-
-                <button
-                  onClick={() => {
-                    setTargetTabungan(Number(inputTarget.replace(/\./g, "")));
-                    setEditTarget(false);
-                  }}
-                  className="px-6 py-3 rounded-lg bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold transition-all duration-300 shadow-lg hover:shadow-green-900/50"
-                >
-                  Simpan
-                </button>
-              </div>
-            )}
-
-            {/* Progress Section */}
-            <div className="space-y-4">
-              <div className="flex justify-between items-end gap-4">
-                <div>
-                  <p className="text-slate-400 text-xs uppercase tracking-wide mb-2">
-                    Terkumpul
-                  </p>
-                  <p className="text-3xl font-bold text-white">
-                    Rp {saldo.toLocaleString("id-ID")}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-slate-400 text-xs uppercase tracking-wide mb-2">
-                    Persentase
-                  </p>
-                  <p className="text-3xl font-bold bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400 text-transparent">
-                    {progress.toFixed(1)}%
-                  </p>
-                </div>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="space-y-2">
-                <div className="w-full h-3 bg-slate-700/50 rounded-full overflow-hidden border border-slate-600/30">
-                  <div
-                    className="h-full bg-gradient-to-r from-green-500 via-emerald-500 to-emerald-600 transition-all duration-700 rounded-full shadow-lg shadow-green-500/50"
-                    style={{
-                      width: `${progress}%`,
-                    }}
-                  />
-                </div>
-                <div className="flex justify-between items-center pt-2">
-                  <span className="text-slate-500 text-xs">
-                    0 Rp
-                  </span>
-                  <span className="text-slate-500 text-xs">
-                    Rp {targetTabungan.toLocaleString("id-ID")}
-                  </span>
-                </div>
-              </div>
-
-              {/* Remaining Amount */}
-              <div className="mt-4 p-4 rounded-lg bg-gradient-to-r from-slate-700/30 to-slate-700/10 border border-slate-600/20">
-                <p className="text-slate-400 text-xs uppercase tracking-wide mb-1">
-                  Sisa yang dibutuhkan
-                </p>
-                <p className="text-2xl font-bold text-white">
-                  Rp {Math.max(targetTabungan - saldo, 0).toLocaleString("id-ID")}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Action Links Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8 animate-fade-in" style={{ animationDelay: "300ms" }}>
-          <Link
-            href="/akun/edit"
-            className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-800 to-slate-800/50 hover:from-slate-700 hover:to-slate-700/50 border border-slate-700 hover:border-slate-600 p-6 transition-all duration-500 transform hover:scale-105"
-          >
-            <div className="relative z-10">
-              <div className="text-3xl mb-3">🏦</div>
-
-              <h3 className="text-white font-bold text-lg mb-2">
-                Kelola Akun
-              </h3>
-
-              <p className="text-slate-400 text-sm">
-                Tambah dan kelola rekening
-              </p>
-            </div>
-          </Link>
-          
-          <Link
-            href="/transaksi/tambah"
-            className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-800 to-slate-800/50 hover:from-slate-700 hover:to-slate-700/50 border border-slate-700 hover:border-slate-600 p-6 transition-all duration-500 transform hover:scale-105 hover:shadow-lg hover:shadow-blue-900/20"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="relative z-10">
-              <div className="text-3xl mb-3">➕</div>
-              <h3 className="text-white font-bold text-lg mb-2">
-                Tambah Transaksi
-              </h3>
-              <p className="text-slate-400 text-sm group-hover:text-slate-300 transition-colors">
-                Catat pemasukan atau pengeluaran
-              </p>
-            </div>
-          </Link>
-
-          <Link
-            href="/transaksi"
-            className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-800 to-slate-800/50 hover:from-slate-700 hover:to-slate-700/50 border border-slate-700 hover:border-slate-600 p-6 transition-all duration-500 transform hover:scale-105 hover:shadow-lg hover:shadow-purple-900/20"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="relative z-10">
-              <div className="text-3xl mb-3">📊</div>
-              <h3 className="text-white font-bold text-lg mb-2">
-                Riwayat Transaksi
-              </h3>
-              <p className="text-slate-400 text-sm group-hover:text-slate-300 transition-colors">
-                Lihat semua transaksi Anda
-              </p>
-            </div>
-          </Link>
-
-          <Link
-            href="/laporan"
-            className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-800 to-slate-800/50 hover:from-slate-700 hover:to-slate-700/50 border border-slate-700 hover:border-slate-600 p-6 transition-all duration-500 transform hover:scale-105 hover:shadow-lg hover:shadow-amber-900/20"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="relative z-10">
-              <div className="text-3xl mb-3">📈</div>
-              <h3 className="text-white font-bold text-lg mb-2">
-                Laporan
-              </h3>
-              <p className="text-slate-400 text-sm group-hover:text-slate-300 transition-colors">
-                Analisis keuangan Anda
-              </p>
-            </div>
-          </Link>
-
-          <Link
-            href="/profile"
-            className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-800 to-slate-800/50 hover:from-slate-700 hover:to-slate-700/50 border border-slate-700 hover:border-slate-600 p-6 transition-all duration-500 transform hover:scale-105 hover:shadow-lg hover:shadow-pink-900/20"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-pink-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="relative z-10">
-              <div className="text-3xl mb-3">👤</div>
-              <h3 className="text-white font-bold text-lg mb-2">
-                Profil
-              </h3>
-              <p className="text-slate-400 text-sm group-hover:text-slate-300 transition-colors">
-                Kelola akun Anda
-              </p>
-            </div>
-          </Link>
-        </div>
-
-        {/* Reactivate Target Button */}
-        {!showTarget && (
-          <div className="mb-8 animate-fade-in" style={{ animationDelay: "400ms" }}>
-            <button
-              onClick={() => {
-                setShowTarget(true);
-                localStorage.setItem(
-                  "showTarget",
-                  JSON.stringify(true)
-                );
-              }}
-              className="group px-6 py-3 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-green-900/50 flex items-center gap-2"
-            >
-              <span>🎯</span>
-              <span>Aktifkan Target Tabungan</span>
-            </button>
-          </div>
-        )}
-
-        {/* Footer */}
-        <div className="mt-16 text-center text-slate-500 text-sm">
-          <p>✨ Kelola keuangan Anda dengan lebih baik</p>
-        </div>
-      </div>
-
-      <style jsx>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-fade-in {
-          animation: fade-in 0.6s ease-out forwards;
-          opacity: 0;
-        }
-      `}</style>
-    </div>
-  );
-}

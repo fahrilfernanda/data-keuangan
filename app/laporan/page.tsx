@@ -1,5 +1,6 @@
 "use client";
 
+import { ChartOptions } from "chart.js";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
@@ -13,9 +14,23 @@ import {
   Title,
   Tooltip,
   Legend,
+  Filler,
 } from "chart.js";
 
 import { Line } from "react-chartjs-2";
+import {
+  ArrowLeft,
+  Sparkles,
+  ArrowUpRight,
+  ArrowDownRight,
+  Wallet,
+  TrendingUp,
+  PiggyBank,
+  AlertTriangle,
+  CheckCircle2,
+  Info,
+  BarChart3,
+} from "lucide-react";
 
 ChartJS.register(
   CategoryScale,
@@ -24,16 +39,19 @@ ChartJS.register(
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 );
 
 export default function LaporanPage() {
   const [income, setIncome] = useState(0);
   const [expense, setExpense] = useState(0);
-  const [monthlyIncome, setMonthlyIncome] =
-  useState<number[]>(Array(12).fill(0));
-  const [monthlyExpense, setMonthlyExpense] =
-  useState<number[]>(Array(12).fill(0));
+  const [monthlyIncome, setMonthlyIncome] = useState<number[]>(
+    Array(12).fill(0)
+  );
+  const [monthlyExpense, setMonthlyExpense] = useState<number[]>(
+    Array(12).fill(0)
+  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -48,47 +66,23 @@ export default function LaporanPage() {
 
       const { data } = await supabase
         .from("transactions")
-        .select(`
-        amount,
-        transaction_date,
-        categories(type)
-        `)
+        .select(`amount, transaction_date, categories(type)`)
         .eq("user_id", user?.id);
 
       let pemasukan = 0;
       let pengeluaran = 0;
+      const incomeByMonth = Array(12).fill(0);
+      const expenseByMonth = Array(12).fill(0);
 
       data?.forEach((item: any) => {
-        if (
-          item.categories?.type === "income"
-        ) {
-          pemasukan += Number(item.amount);
+        const month = new Date(item.transaction_date).getMonth();
+        const amt = Number(item.amount);
+        if (item.categories?.type === "income") {
+          pemasukan += amt;
+          incomeByMonth[month] += amt;
         } else {
-          pengeluaran += Number(item.amount);
-        }
-      });
-
-      const incomeByMonth =
-        Array(12).fill(0);
-
-      const expenseByMonth =
-        Array(12).fill(0);
-
-      data?.forEach((item: any) => {
-        const month = new Date(
-          item.transaction_date
-        ).getMonth();
-
-        if (
-          item.categories?.type === "income"
-        ) {
-          incomeByMonth[month] += Number(
-            item.amount
-          );
-        } else {
-          expenseByMonth[month] += Number(
-            item.amount
-          );
+          pengeluaran += amt;
+          expenseByMonth[month] += amt;
         }
       });
 
@@ -104,389 +98,532 @@ export default function LaporanPage() {
     }
   }
 
-    const chartData = {
+  const balance = income - expense;
+  const expenseRatio =
+    income > 0 ? Math.round((expense / income) * 100) : 0;
+  const savingsRate =
+    income > 0 ? Math.round(((income - expense) / income) * 100) : 0;
+
+  const chartData = {
     labels: [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "Mei",
-      "Jun",
-      "Jul",
-      "Agu",
-      "Sep",
-      "Okt",
-      "Nov",
-      "Des",
+      "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+      "Jul", "Agu", "Sep", "Okt", "Nov", "Des",
     ],
 
     datasets: [
       {
         label: "Pemasukan",
         data: monthlyIncome,
-        borderColor: "#10b981",
-        backgroundColor:
-          "rgba(16,185,129,0.2)",
+        borderColor: "#34d399",
+        backgroundColor: (ctx: any) => {
+          const { chart } = ctx;
+          const { ctx: c, chartArea } = chart;
+          if (!chartArea) return "rgba(52,211,153,0.1)";
+          const gradient = c.createLinearGradient(
+            0, chartArea.top, 0, chartArea.bottom
+          );
+          gradient.addColorStop(0, "rgba(52,211,153,0.25)");
+          gradient.addColorStop(1, "rgba(52,211,153,0)");
+          return gradient;
+        },
         tension: 0.4,
+        fill: true,
+        borderWidth: 2,
+        pointBackgroundColor: "#34d399",
+        pointBorderColor: "#0b0d10",
+        pointBorderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 5,
       },
       {
         label: "Pengeluaran",
         data: monthlyExpense,
-        borderColor: "#ef4444",
-        backgroundColor:
-          "rgba(239,68,68,0.2)",
+        borderColor: "#fb7185",
+        backgroundColor: (ctx: any) => {
+          const { chart } = ctx;
+          const { ctx: c, chartArea } = chart;
+          if (!chartArea) return "rgba(251,113,133,0.1)";
+          const gradient = c.createLinearGradient(
+            0, chartArea.top, 0, chartArea.bottom
+          );
+          gradient.addColorStop(0, "rgba(251,113,133,0.25)");
+          gradient.addColorStop(1, "rgba(251,113,133,0)");
+          return gradient;
+        },
         tension: 0.4,
+        fill: true,
+        borderWidth: 2,
+        pointBackgroundColor: "#fb7185",
+        pointBorderColor: "#0b0d10",
+        pointBorderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 5,
       },
     ],
   };
 
   const chartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: "index" as const, intersect: false },
     plugins: {
       legend: {
+        position: "top" as const,
+        align: "end" as const,
         labels: {
-          color: "#fff",
+          color: "#a1a1aa",
+          font: { size: 11, family: "system-ui" },
+          boxWidth: 8,
+          boxHeight: 8,
+          usePointStyle: true,
+          pointStyle: "circle",
+          padding: 16,
+        },
+      },
+      tooltip: {
+        backgroundColor: "rgba(15,15,18,0.95)",
+        borderColor: "rgba(255,255,255,0.08)",
+        borderWidth: 1,
+        padding: 12,
+        titleColor: "#fbbf24",
+        titleFont: { size: 11, weight: 600 },
+        bodyColor: "#e4e4e7",
+        bodyFont: { size: 12 },
+        cornerRadius: 8,
+        displayColors: true,
+        boxPadding: 4,
+        callbacks: {
+          label: (ctx: any) =>
+            ` ${ctx.dataset.label}: Rp ${Number(ctx.parsed.y).toLocaleString(
+              "id-ID"
+            )}`,
         },
       },
     },
     scales: {
       x: {
-        ticks: {
-          color: "#cbd5e1",
-        },
-        grid: {
-          color: "#334155",
-        },
+        ticks: { color: "#71717a", font: { size: 11 } },
+        grid: { color: "rgba(255,255,255,0.04)", drawBorder: false },
       },
       y: {
         ticks: {
-          color: "#cbd5e1",
+          color: "#71717a",
+          font: { size: 11 },
+          callback: (val: any) =>
+            val >= 1_000_000
+              ? `${val / 1_000_000}jt`
+              : val >= 1000
+              ? `${val / 1000}rb`
+              : val,
         },
-        grid: {
-          color: "#334155",
-        },
+        grid: { color: "rgba(255,255,255,0.04)", drawBorder: false },
       },
     },
   };
 
-  const balance = income - expense;
-  const expenseRatio =
-    income > 0
-      ? Math.round((expense / income) * 100)
-      : 0;
-  const savingsRate =
-    income > 0
-      ? Math.round(
-          ((income - expense) / income) * 100
-        )
-      : 0;
+  // Insights logic
+  const insights = [];
+  if (expenseRatio > 0 && expenseRatio < 50) {
+    insights.push({
+      icon: CheckCircle2,
+      color: "emerald",
+      title: "Sangat Baik",
+      text: `Pengeluaran Anda hanya ${expenseRatio}% dari pemasukan. Kondisi keuangan cukup sehat.`,
+    });
+  }
+  if (expenseRatio >= 50 && expenseRatio <= 80) {
+    insights.push({
+      icon: Info,
+      color: "amber",
+      title: "Stabil",
+      text: "Pengeluaran masih dalam batas aman, namun tetap perhatikan pengeluaran rutin.",
+    });
+  }
+  if (expenseRatio > 80) {
+    insights.push({
+      icon: AlertTriangle,
+      color: "rose",
+      title: "Perhatian",
+      text: `Pengeluaran mencapai ${expenseRatio}% dari pemasukan. Pertimbangkan untuk mengurangi pengeluaran tidak penting.`,
+    });
+  }
+  if (savingsRate >= 20) {
+    insights.push({
+      icon: PiggyBank,
+      color: "emerald",
+      title: "Tabungan Sehat",
+      text: `Anda berhasil menyisihkan ${savingsRate}% dari pemasukan sebagai tabungan.`,
+    });
+  }
+  if (balance > 0) {
+    insights.push({
+      icon: TrendingUp,
+      color: "amber",
+      title: "Saldo Positif",
+      text: `Saldo bersih Anda saat ini Rp ${balance.toLocaleString("id-ID")}.`,
+    });
+  }
+
+  const insightColors: Record<string, string> = {
+    emerald: "bg-emerald-500/[0.06] border-emerald-500/20 text-emerald-300",
+    amber: "bg-amber-500/[0.06] border-amber-500/20 text-amber-300",
+    rose: "bg-rose-500/[0.06] border-rose-500/20 text-rose-300",
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Background decorative elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 right-10 w-72 h-72 bg-indigo-500 rounded-full mix-blend-screen filter blur-3xl opacity-10"></div>
-        <div className="absolute bottom-20 left-10 w-72 h-72 bg-cyan-500 rounded-full mix-blend-screen filter blur-3xl opacity-10"></div>
+    <div className="min-h-screen bg-[#0b0d10] text-white relative overflow-hidden font-sans">
+      {/* Ambient background */}
+      <div className="pointer-events-none fixed inset-0">
+        <div className="absolute -top-40 -right-40 w-[520px] h-[520px] rounded-full bg-amber-500/[0.06] blur-[120px]" />
+        <div className="absolute bottom-0 left-0 w-[420px] h-[420px] rounded-full bg-emerald-500/[0.05] blur-[120px]" />
+        <div
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.6) 1px, transparent 0)",
+            backgroundSize: "32px 32px",
+          }}
+        />
       </div>
 
-      {/* Content */}
-      <div className="relative z-10 p-6 md:p-8 max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 flex justify-between items-center">
-          <div>
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-1">
-              Laporan Keuangan
-            </h1>
-            <p className="text-slate-400">
-              Ringkasan detail keuangan Anda
-            </p>
-          </div>
+      <div className="relative z-10 px-5 md:px-10 py-8 md:py-12 max-w-7xl mx-auto">
+        {/* Nav */}
+        <nav className="flex items-center justify-between mb-12 animate-fadeIn">
           <Link
             href="/dashboard"
-            className="px-6 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-semibold transition-all duration-200"
+            className="group flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.03] hover:bg-white/[0.06] text-zinc-400 hover:text-white text-xs font-medium border border-white/[0.06] hover:border-white/[0.12] transition-all"
           >
-            ← Kembali
+            <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+            Kembali
           </Link>
-        </div>
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
+              <Sparkles className="w-4 h-4 text-zinc-900" strokeWidth={2.5} />
+            </div>
+            <span className="text-sm font-semibold tracking-tight text-white/90">
+              Laporan Keuangan
+            </span>
+          </div>
+        </nav>
 
-        {/* Loading State */}
+        {/* Header */}
+        <header className="mb-10 animate-fadeIn">
+          <p className="text-xs uppercase tracking-[0.3em] text-amber-400/80 mb-3 font-medium">
+            Analitik
+          </p>
+          <h1 className="text-4xl md:text-5xl font-semibold tracking-tight leading-[1.05] mb-3">
+            Laporan{" "}
+            <span className="italic font-light text-amber-200/90">
+              Keuangan
+            </span>
+          </h1>
+          <p className="text-zinc-500 text-sm font-light max-w-md">
+            Ringkasan detail arus kas, tren bulanan, dan rekomendasi finansial
+            Anda.
+          </p>
+        </header>
+
         {loading ? (
-          <div className="grid md:grid-cols-3 gap-6">
-            {[1, 2, 3].map((item) => (
+          <div className="grid md:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
               <div
-                key={item}
-                className="bg-slate-800 rounded-2xl p-8 border border-slate-700 animate-pulse"
+                key={i}
+                className="rounded-3xl bg-white/[0.02] border border-white/[0.05] p-8 animate-pulse"
               >
-                <div className="h-6 bg-slate-700 rounded w-1/2 mb-4"></div>
-                <div className="h-10 bg-slate-700 rounded w-2/3"></div>
+                <div className="h-3 bg-white/[0.05] rounded w-1/3 mb-4" />
+                <div className="h-8 bg-white/[0.05] rounded w-2/3" />
               </div>
             ))}
           </div>
         ) : (
           <>
-            {/* Summary Stats */}
-            <div className="grid md:grid-cols-3 gap-6 mb-8">
+            {/* Summary Cards */}
+            <section
+              className="grid md:grid-cols-3 gap-4 mb-6 animate-slideUp"
+              style={{ animationDelay: "80ms" }}
+            >
               {/* Income */}
-              <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-700 p-8 border border-emerald-500 border-opacity-20 hover:border-opacity-40 transition-all duration-300">
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
-                <div className="relative z-10">
-                  <h3 className="text-emerald-100 text-sm font-semibold mb-2">
-                    Total Pemasukan
-                  </h3>
-                  <p className="text-4xl font-bold text-white mb-4">
-                    Rp{" "}
-                    {income.toLocaleString(
-                      "id-ID"
-                    )}
-                  </p>
-                  <div className="text-emerald-100 text-xs opacity-75">
-                    ↑ {(income > 0 ? "+100" : "0")}% dari
-                    sebelumnya
+              <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-zinc-900 to-black border border-white/[0.06] p-7">
+                <div className="absolute top-0 right-0 w-40 h-40 bg-emerald-500/[0.08] rounded-full blur-3xl" />
+                <div className="relative">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-[10px] uppercase tracking-[0.25em] text-zinc-500 font-medium">
+                      Pemasukan
+                    </p>
+                    <div className="w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                      <ArrowUpRight className="w-3.5 h-3.5 text-emerald-400" />
+                    </div>
                   </div>
+                  <p className="text-3xl md:text-4xl font-semibold text-emerald-300 tabular-nums">
+                    <span className="text-zinc-500 text-base font-light mr-1">
+                      Rp
+                    </span>
+                    {income.toLocaleString("id-ID")}
+                  </p>
                 </div>
               </div>
 
               {/* Expense */}
-              <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-600 to-red-700 p-8 border border-red-500 border-opacity-20 hover:border-opacity-40 transition-all duration-300">
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
-                <div className="relative z-10">
-                  <h3 className="text-red-100 text-sm font-semibold mb-2">
-                    Total Pengeluaran
-                  </h3>
-                  <p className="text-4xl font-bold text-white mb-4">
-                    Rp{" "}
-                    {expense.toLocaleString(
-                      "id-ID"
-                    )}
-                  </p>
-                  <div className="text-red-100 text-xs opacity-75">
-                    {expenseRatio}% dari pemasukan
+              <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-zinc-900 to-black border border-white/[0.06] p-7">
+                <div className="absolute top-0 right-0 w-40 h-40 bg-rose-500/[0.08] rounded-full blur-3xl" />
+                <div className="relative">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-[10px] uppercase tracking-[0.25em] text-zinc-500 font-medium">
+                      Pengeluaran
+                    </p>
+                    <div className="w-8 h-8 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+                      <ArrowDownRight className="w-3.5 h-3.5 text-rose-400" />
+                    </div>
                   </div>
+                  <p className="text-3xl md:text-4xl font-semibold text-rose-300 tabular-nums">
+                    <span className="text-zinc-500 text-base font-light mr-1">
+                      Rp
+                    </span>
+                    {expense.toLocaleString("id-ID")}
+                  </p>
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-600 mt-3">
+                    {expenseRatio}% dari pemasukan
+                  </p>
                 </div>
               </div>
 
               {/* Balance */}
-              <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 p-8 border border-blue-500 border-opacity-20 hover:border-opacity-40 transition-all duration-300">
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
-                <div className="relative z-10">
-                  <h3 className="text-blue-100 text-sm font-semibold mb-2">
-                    Saldo Bersih
-                  </h3>
+              <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-zinc-900 to-black border border-white/[0.06] p-7">
+                <div className="absolute top-0 right-0 w-40 h-40 bg-amber-500/[0.08] rounded-full blur-3xl" />
+                <div className="relative">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-[10px] uppercase tracking-[0.25em] text-zinc-500 font-medium">
+                      Saldo Bersih
+                    </p>
+                    <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                      <Wallet className="w-3.5 h-3.5 text-amber-400" />
+                    </div>
+                  </div>
                   <p
-                    className={`text-4xl font-bold mb-4 ${
-                      balance >= 0
-                        ? "text-white"
-                        : "text-red-200"
+                    className={`text-3xl md:text-4xl font-semibold tabular-nums ${
+                      balance >= 0 ? "text-white" : "text-rose-400"
                     }`}
                   >
-                    Rp{" "}
-                    {balance.toLocaleString(
-                      "id-ID"
-                    )}
+                    <span className="text-zinc-500 text-base font-light mr-1">
+                      Rp
+                    </span>
+                    {balance.toLocaleString("id-ID")}
                   </p>
-                  <div className="text-blue-100 text-xs opacity-75">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-600 mt-3">
                     {savingsRate}% tingkat tabungan
-                  </div>
+                  </p>
                 </div>
               </div>
-            </div>
+            </section>
 
-            <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 mb-8">
-              <h3 className="text-white font-semibold text-lg mb-6">
-                📈 Grafik Pemasukan vs Pengeluaran
-              </h3>
+            {/* Chart */}
+            <section
+              className="mb-6 animate-slideUp"
+              style={{ animationDelay: "150ms" }}
+            >
+              <div className="rounded-3xl bg-gradient-to-br from-zinc-900/80 to-zinc-900/40 border border-white/[0.06] p-6 md:p-8 backdrop-blur-xl">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                      <BarChart3 className="w-4 h-4 text-amber-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-semibold tracking-tight">
+                        Tren Bulanan
+                      </h3>
+                      <p className="text-xs text-zinc-500">
+                        Pemasukan vs Pengeluaran sepanjang tahun
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="h-64 md:h-72">
+                  <Line data={chartData} options={chartOptions} />
+                </div>
+              </div>
+            </section>
 
-              <div className="h-56">
-              <Line
-                data={chartData}
-                options={{
-                  ...chartOptions,
-                  maintainAspectRatio: false,
-                }}
-              />
-            </div>
-            </div>
-
-            {/* Visualizations */}
-            <div className="grid md:grid-cols-2 gap-6 mb-8">
-              {/* Expense Ratio */}
-              <div className="bg-slate-800 rounded-2xl p-8 border border-slate-700">
-                <h3 className="text-white font-semibold text-lg mb-6">
-                  Komposisi Pengeluaran
+            {/* Composition + Insights */}
+            <section
+              className="grid md:grid-cols-2 gap-4 mb-6 animate-slideUp"
+              style={{ animationDelay: "220ms" }}
+            >
+              {/* Composition */}
+              <div className="rounded-3xl bg-gradient-to-br from-zinc-900/80 to-zinc-900/40 border border-white/[0.06] p-7 backdrop-blur-xl">
+                <h3 className="text-base font-semibold tracking-tight mb-1">
+                  Komposisi Anggaran
                 </h3>
-                <div className="space-y-4">
+                <p className="text-xs text-zinc-500 mb-7">
+                  Distribusi pemasukan Anda
+                </p>
+
+                <div className="space-y-6">
                   <div>
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-slate-300">
+                      <span className="text-xs text-zinc-400">
                         Pengeluaran
                       </span>
-                      <span className="text-red-400 font-semibold">
+                      <span className="text-sm font-semibold text-rose-300 tabular-nums">
                         {expenseRatio}%
                       </span>
                     </div>
-                    <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
+                    <div className="w-full h-2 bg-white/[0.04] rounded-full overflow-hidden">
                       <div
-                        className="bg-gradient-to-r from-red-500 to-red-600 h-full rounded-full transition-all duration-300"
-                        style={{
-                          width: `${expenseRatio}%`,
-                        }}
-                      ></div>
+                        className="h-full bg-gradient-to-r from-rose-500 to-rose-400 rounded-full transition-all duration-1000"
+                        style={{ width: `${Math.min(expenseRatio, 100)}%` }}
+                      />
                     </div>
                   </div>
 
                   <div>
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-slate-300">
-                        Tabungan
-                      </span>
-                      <span className="text-emerald-400 font-semibold">
-                        {savingsRate}%
+                      <span className="text-xs text-zinc-400">Tabungan</span>
+                      <span className="text-sm font-semibold text-emerald-300 tabular-nums">
+                        {Math.max(savingsRate, 0)}%
                       </span>
                     </div>
-                    <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
+                    <div className="w-full h-2 bg-white/[0.04] rounded-full overflow-hidden">
                       <div
-                        className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-full rounded-full transition-all duration-300"
+                        className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-1000"
                         style={{
-                          width: `${savingsRate}%`,
+                          width: `${Math.max(Math.min(savingsRate, 100), 0)}%`,
                         }}
-                      ></div>
+                      />
                     </div>
+                  </div>
+                </div>
+
+                <div className="mt-7 pt-6 border-t border-white/[0.06] grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1">
+                      Rasio Pengeluaran
+                    </p>
+                    <p className="text-xl font-semibold text-white tabular-nums">
+                      {expenseRatio}%
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1">
+                      Savings Rate
+                    </p>
+                    <p className="text-xl font-semibold text-white tabular-nums">
+                      {savingsRate}%
+                    </p>
                   </div>
                 </div>
               </div>
 
               {/* Insights */}
-              <div className="bg-slate-800 rounded-2xl p-8 border border-slate-700">
-                <h3 className="text-white font-semibold text-lg mb-6">
+              <div className="rounded-3xl bg-gradient-to-br from-zinc-900/80 to-zinc-900/40 border border-white/[0.06] p-7 backdrop-blur-xl">
+                <h3 className="text-base font-semibold tracking-tight mb-1">
                   Insights & Rekomendasi
                 </h3>
-                <div className="space-y-4">
-                  {expenseRatio < 50 && (
-                <div className="bg-slate-700 rounded-lg p-4 border-l-4 border-green-400">
-                  <p className="text-slate-200 text-sm">
-                    <span className="font-semibold text-green-400">
-                      🎉 Sangat Baik:
-                    </span>{" "}
-                    Pengeluaran Anda hanya {expenseRatio}% dari
-                    pemasukan. Kondisi keuangan cukup sehat.
-                  </p>
-                </div>
-              )}
+                <p className="text-xs text-zinc-500 mb-6">
+                  Analisis berdasarkan data Anda
+                </p>
 
-              {expenseRatio >= 50 && expenseRatio <= 80 && (
-                <div className="bg-slate-700 rounded-lg p-4 border-l-4 border-blue-400">
-                  <p className="text-slate-200 text-sm">
-                    <span className="font-semibold text-blue-400">
-                      📊 Stabil:
-                    </span>{" "}
-                    Pengeluaran masih dalam batas aman,
-                    namun tetap perhatikan pengeluaran rutin.
-                  </p>
-                </div>
-              )}
-
-              {expenseRatio > 80 && (
-                <div className="bg-slate-700 rounded-lg p-4 border-l-4 border-orange-400">
-                  <p className="text-slate-200 text-sm">
-                    <span className="font-semibold text-orange-400">
-                      ⚠ Perhatian:
-                    </span>{" "}
-                    Pengeluaran mencapai {expenseRatio}% dari
-                    pemasukan. Pertimbangkan untuk mengurangi
-                    pengeluaran yang tidak penting.
-                  </p>
-                </div>
-              )}
-
-              {savingsRate >= 20 && (
-                <div className="bg-slate-700 rounded-lg p-4 border-l-4 border-emerald-400">
-                  <p className="text-slate-200 text-sm">
-                    <span className="font-semibold text-emerald-400">
-                      💰 Tabungan Sehat:
-                    </span>{" "}
-                    Anda berhasil menyisihkan {savingsRate}% dari
-                    pemasukan sebagai tabungan.
-                  </p>
-                </div>
-              )}
-
-              {balance > 0 && (
-                <div className="bg-slate-700 rounded-lg p-4 border-l-4 border-cyan-400">
-                  <p className="text-slate-200 text-sm">
-                    <span className="font-semibold text-cyan-400">
-                      📈 Saldo Positif:
-                    </span>{" "}
-                    Saldo Anda saat ini Rp{" "}
-                    {balance.toLocaleString("id-ID")}.
-                  </p>
-                </div>
-              )}
+                <div className="space-y-3">
+                  {insights.length === 0 ? (
+                    <div className="text-sm text-zinc-500 py-6 text-center">
+                      Belum cukup data untuk membuat insight.
+                    </div>
+                  ) : (
+                    insights.map((ins, i) => {
+                      const Icon = ins.icon;
+                      return (
+                        <div
+                          key={i}
+                          className={`flex gap-3 p-3.5 rounded-xl border ${insightColors[ins.color]}`}
+                        >
+                          <Icon className="w-4 h-4 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-xs font-semibold mb-1">
+                              {ins.title}
+                            </p>
+                            <p className="text-xs text-zinc-400 leading-relaxed">
+                              {ins.text}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
-            </div>
+            </section>
 
-            {/* Detailed Breakdown */}
-            <div className="bg-slate-800 rounded-2xl p-8 border border-slate-700">
-              <h3 className="text-white font-semibold text-lg mb-6">
-                Ringkasan Detail
-              </h3>
+            {/* Detailed Summary */}
+            <section
+              className="animate-slideUp"
+              style={{ animationDelay: "300ms" }}
+            >
+              <div className="rounded-3xl bg-gradient-to-br from-zinc-900/80 to-zinc-900/40 border border-white/[0.06] p-7 md:p-8 backdrop-blur-xl">
+                <h3 className="text-base font-semibold tracking-tight mb-7">
+                  Ringkasan Detail
+                </h3>
 
-              <div className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-8">
+                <div className="grid md:grid-cols-2 gap-8 mb-7">
                   <div>
-                    <p className="text-slate-400 text-sm mb-2">
-                      TOTAL PEMASUKAN
+                    <p className="text-[10px] uppercase tracking-[0.25em] text-zinc-500 mb-2">
+                      Total Pemasukan
                     </p>
-                    <p className="text-3xl font-bold text-emerald-400">
-                      Rp{" "}
-                      {income.toLocaleString(
-                        "id-ID"
-                      )}
+                    <p className="text-3xl font-semibold text-emerald-300 tabular-nums">
+                      Rp {income.toLocaleString("id-ID")}
                     </p>
                   </div>
                   <div>
-                    <p className="text-slate-400 text-sm mb-2">
-                      TOTAL PENGELUARAN
+                    <p className="text-[10px] uppercase tracking-[0.25em] text-zinc-500 mb-2">
+                      Total Pengeluaran
                     </p>
-                    <p className="text-3xl font-bold text-red-400">
-                      Rp{" "}
-                      {expense.toLocaleString(
-                        "id-ID"
-                      )}
+                    <p className="text-3xl font-semibold text-rose-300 tabular-nums">
+                      Rp {expense.toLocaleString("id-ID")}
                     </p>
                   </div>
                 </div>
 
-                <div className="border-t border-slate-700 pt-6">
-                  <p className="text-slate-400 text-sm mb-2">
-                    SALDO AKHIR
+                <div className="pt-7 border-t border-white/[0.06]">
+                  <p className="text-[10px] uppercase tracking-[0.25em] text-zinc-500 mb-2">
+                    Saldo Akhir
                   </p>
                   <p
-                    className={`text-4xl font-bold ${
-                      balance >= 0
-                        ? "text-white"
-                        : "text-red-400"
+                    className={`text-4xl md:text-5xl font-semibold tabular-nums ${
+                      balance >= 0 ? "text-white" : "text-rose-400"
                     }`}
                   >
-                    Rp{" "}
-                    {balance.toLocaleString(
-                      "id-ID"
-                    )}
+                    <span className="text-zinc-500 text-xl font-light mr-2">
+                      Rp
+                    </span>
+                    {balance.toLocaleString("id-ID")}
                   </p>
                 </div>
               </div>
-            </div>
+            </section>
 
-            {/* Footer */}
-            <div className="mt-12 text-center text-slate-400 text-sm">
-              <p>
-                📊 Laporan diperbarui secara
-                real-time dari transaksi Anda
+            <footer className="pt-8 mt-10 border-t border-white/[0.05] flex flex-col md:flex-row items-center justify-between gap-3">
+              <p className="text-xs text-zinc-600">
+                Laporan diperbarui real-time berdasarkan transaksi Anda
               </p>
-            </div>
+              <div className="flex items-center gap-1.5 text-xs text-zinc-600">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Tersinkron otomatis
+              </div>
+            </footer>
           </>
         )}
       </div>
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(16px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn { animation: fadeIn 0.6s ease-out both; }
+        .animate-slideUp { animation: slideUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+      `}</style>
     </div>
   );
 }
