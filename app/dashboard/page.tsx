@@ -21,11 +21,14 @@
     Pencil,
     Check,
     X,
+    Brain,
   } from "lucide-react";
 
   export default function DashboardPage() {
     const [saldo, setSaldo] = useState(0);
     const [income, setIncome] = useState(0);
+    const [advice, setAdvice] = useState("");
+    const [loadingAI, setLoadingAI] = useState(false);
     const [expense, setExpense] = useState(0);
     const [loading, setLoading] = useState(true);
     const [userName, setUserName] = useState("");
@@ -34,6 +37,13 @@
     const [editTarget, setEditTarget] = useState(false);
     const [inputTarget, setInputTarget] = useState("10.000.000");
     const [hideBalance, setHideBalance] = useState(false);
+    const [message, setMessage] = useState("");
+    const [chat, setChat] = useState<
+      {
+        role: string;
+        text: string;
+      }[]
+    >([]);
 
     useEffect(() => {
       loadData();
@@ -146,6 +156,83 @@
       }
     }
 
+
+
+    async function getFinancialAdvice() {
+      try {
+        setLoadingAI(true);
+
+        const res = await fetch(
+          "/api/financial-coach",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              income,
+              expense,
+              balance: saldo,
+              target: targetTabungan,
+            }),
+          }
+        );
+
+        const data = await res.json();
+
+        setAdvice(data.advice);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingAI(false);
+      }
+    }
+
+    async function sendMessage() {
+      if (!message.trim()) return;
+
+      const userMessage = message;
+
+      setChat((prev) => [
+        ...prev,
+        {
+          role: "user",
+          text: userMessage,
+        },
+      ]);
+
+      setMessage("");
+
+      try {
+        const res = await fetch(
+          "/api/financial-coach",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              message: userMessage,
+            }),
+          }
+        );
+
+        const data = await res.json();
+
+        setChat((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            text: data.reply,
+          },
+        ]);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
     function handleTargetChange(e: React.ChangeEvent<HTMLInputElement>) {
       setInputTarget(formatRupiah(e.target.value));
     }
@@ -187,6 +274,38 @@
       if (h < 19) return "Selamat sore";
       return "Selamat malam";
     })();
+
+    async function askAI(): Promise<void> {
+      if (!message.trim()) return;
+
+      setLoadingAI(true);
+      const userMessage = message;
+      setMessage("");
+
+      try {
+        const response = await fetch("/api/financial-coach", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+             message: userMessage,
+            context: { saldo, income, expense, targetTabungan },
+          }),
+        });
+
+        const data = await response.json();
+        setAdvice(data.reply || "Tidak dapat memproses permintaan Anda.");
+        setChat([
+          ...chat,
+          { role: "user", text: userMessage },
+          { role: "ai", text: data.reply },
+        ]);
+      } catch (error) {
+        console.error("Error calling AI:", error);
+        setAdvice("Terjadi kesalahan saat menghubungi AI.");
+      } finally {
+        setLoadingAI(false);
+      }
+    }
 
     return (
       <div className="min-h-screen bg-[#0b0d10] text-white relative overflow-hidden font-sans">
@@ -503,6 +622,50 @@
               </button>
             </section>
           )}
+
+          {/* Financial Coach AI */}
+<section
+  className="mb-10 animate-slideUp"
+  style={{ animationDelay: "260ms" }}
+>
+  <div className="rounded-3xl bg-gradient-to-br from-zinc-900/80 to-zinc-900/40 border border-white/[0.06] p-7 md:p-9">
+
+    <h2 className="text-xl font-semibold mb-4">
+      🤖 Financial Coach AI
+    </h2>
+
+    <p className="text-zinc-500 text-sm mb-4">
+      Tanyakan apa saja tentang kondisi keuangan Anda.
+    </p>
+
+    <textarea
+      value={message}
+      onChange={(e) =>
+        setMessage(e.target.value)
+      }
+      placeholder="Contoh: Apakah kondisi keuangan saya sehat?"
+      className="w-full h-32 p-4 rounded-xl bg-zinc-800 border border-zinc-700 text-white"
+    />
+
+    <button
+      onClick={askAI}
+      disabled={loadingAI}
+      className="mt-4 px-5 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-semibold"
+    >
+      {loadingAI
+        ? "Memproses..."
+        : "Tanya AI"}
+    </button>
+
+    {advice && (
+      <div className="mt-5 p-4 rounded-xl bg-zinc-800 border border-zinc-700">
+        <p className="text-zinc-300">
+          {advice}
+        </p>
+      </div>
+    )}
+  </div>
+</section>
 
           {/* Quick actions */}
           <section
